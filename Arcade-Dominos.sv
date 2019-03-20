@@ -149,6 +149,11 @@ always @(posedge clk_sys) begin
 			'h01E: btn_start_2     <= pressed; // 2
 			'h02E: btn_coin_1      <= pressed; // 5
 			'h036: btn_coin_2      <= pressed; // 6
+			'h02D: btn_up_2        <= pressed; // R
+                        'h02B: btn_down_2      <= pressed; // F
+                        'h023: btn_left_2      <= pressed; // D
+                        'h034: btn_right_2     <= pressed; // G
+
 		endcase
 	end
 end
@@ -164,16 +169,20 @@ reg btn_right = 0;
 reg btn_left  = 0;
 reg btn_one_player  = 0;
 reg btn_two_players = 0;
+reg btn_up_2    = 0;
+reg btn_down_2  = 0;
+reg btn_right_2 = 0;
+reg btn_left_2  = 0;
 
 wire m_left1			=  btn_left  | joy0[1];
 wire m_right1		=  btn_right | joy0[0];
 wire m_up1			=  btn_up  | joy0[3];
 wire m_down1		=  btn_down | joy0[2];
 
-wire m_left2   	=	joy1[1];
-wire m_right2  	=  joy1[0];
-wire m_up2   	=	joy1[3];
-wire m_down2  	=  joy1[2];
+wire m_left2   	=	joy1[1] | btn_left_2;
+wire m_right2  	=  joy1[0] | btn_right_2;
+wire m_up2   	=	joy1[3] | btn_up_2;
+wire m_down2  	=  joy1[2] | btn_down_2;
 
 wire m_coin1 = btn_coin_1 | joy0[4];
 wire m_coin2 = btn_coin_2 | joy1[4];
