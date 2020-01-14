@@ -86,14 +86,15 @@ assign HDMI_ARY = status[1] ? 8'd9  : 8'd3;
 localparam CONF_STR = {
 	"A.DOMINOS;;",
 	"-;",
-	"O1,Aspect Ratio,Original,Wide;",
+	"H0O1,Aspect Ratio,Original,Wide;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",  
 	"-;",
 	"OAB,Points to Win,3,4,5,6;",
 	"OD,Test,Off,On;",
 	"-;",
 	"R0,Reset;",
-	"J1,Start,Start 1P,Start 2P;",
+	"J1,Start,Start 1P,Start 2P,Coin;",
+        "jn,Start,Select,R;",
 	"V,v",`BUILD_DATE
 };
 
@@ -101,6 +102,7 @@ localparam CONF_STR = {
 wire [31:0] status;
 wire  [1:0] buttons;
 wire        forced_scandoubler;
+wire        direct_video;
 
 wire        ioctl_download;
 wire        ioctl_wr;
@@ -121,12 +123,13 @@ hps_io #(.STRLEN(($size(CONF_STR)>>3) )) hps_io
 	.HPS_BUS(HPS_BUS),
 
 	.conf_str(CONF_STR),
-	
+
 	.buttons(buttons),
 	.status(status),
+	.status_menumask(direct_video),
 	.forced_scandoubler(forced_scandoubler),
 	.gamma_bus(gamma_bus),
-
+	.direct_video(direct_video),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -152,11 +155,11 @@ always @(posedge clk_sys) begin
 			'hX72: btn_down        <= pressed; // down
 			'hX6B: btn_left        <= pressed; // left
 			'hX74: btn_right       <= pressed; // right
-			'h029: btn_coin_1         <= pressed; // space
-			'h014: btn_coin_2         <= pressed; // ctrl
+			'h029: btn_coin_1      <= pressed; // space
+			'h014: btn_coin_2      <= pressed; // ctrl
 
-			'h005: btn_one_player  <= pressed; // F1
-			'h006: btn_two_players <= pressed; // F2
+			'h005: btn_start_1     <= pressed; // F1
+			'h006: btn_start_2     <= pressed; // F2
 			// JPAC/IPAC/MAME Style Codes
 			'h016: btn_start_1     <= pressed; // 1
 			'h01E: btn_start_2     <= pressed; // 2
@@ -180,17 +183,16 @@ reg btn_up    = 0;
 reg btn_down  = 0;
 reg btn_right = 0;
 reg btn_left  = 0;
-reg btn_one_player  = 0;
-reg btn_two_players = 0;
+
 reg btn_up_2    = 0;
 reg btn_down_2  = 0;
 reg btn_right_2 = 0;
 reg btn_left_2  = 0;
 
-wire m_left1			=  btn_left  | joy0[1];
-wire m_right1		=  btn_right | joy0[0];
-wire m_up1			=  btn_up  | joy0[3];
-wire m_down1		=  btn_down | joy0[2];
+wire m_left1    =  btn_left  | joy0[1];
+wire m_right1	=  btn_right | joy0[0];
+wire m_up1	=  btn_up  | joy0[3];
+wire m_down1    =  btn_down | joy0[2];
 
 wire m_left2   	=	joy1[1] | btn_left_2;
 wire m_right2  	=  joy1[0] | btn_right_2;
@@ -199,9 +201,9 @@ wire m_down2  	=  joy1[2] | btn_down_2;
 
 wire m_coin1 = btn_coin_1 | joy0[4];
 wire m_coin2 = btn_coin_2 | joy1[4];
-wire m_start1 = btn_one_player  | joy0[5] | joy1[5];
-wire m_start2 = btn_two_players | joy0[6] | joy1[6];
-wire m_coin   = m_start1 | m_start2;
+wire m_start1 = btn_start_1 | joy0[5] | joy1[5];
+wire m_start2 = btn_start_2 | joy0[6] | joy1[6];
+wire m_coin   = btn_coin_1 | joy0[7] | joy1[7];
 
 
 
@@ -239,8 +241,8 @@ dominos dominos(
 	.Audio_O(audio1),
 
 	// ????
-	.Coin1_I(~(m_start1|btn_start_1)),
-	.Coin2_I(~(m_start2|btn_start_2)),
+	.Coin1_I(~(m_start1)),
+	.Coin2_I(~(m_start2)),
 	.Start1_I(~m_coin1),
 	.Start2_I(~m_coin2),
 
@@ -270,7 +272,7 @@ wire [6:0] audio1;
 wire [6:0] audio2;
 wire [1:0] video;
 ///////////////////////////////////////////////////
-wire clk_24,clk_12,clk_6;
+wire clk_48,clk_12,clk_6;
 wire clk_sys,locked;
 reg [7:0] vid_mono;
 
@@ -292,29 +294,29 @@ assign AUDIO_R=AUDIO_L;
 assign AUDIO_S = 0;
 wire hblank, vblank;
 wire hs, vs;
-wire [2:0] r,g;
-wire [2:0] b;
+wire [2:0] r,g,b;
 
 reg ce_pix;
-always @(posedge clk_24) begin
-        reg old_clk;
+always @(posedge clk_48) begin
+        reg [2:0] div;
 
-        old_clk <= clk_6;
-        ce_pix <= old_clk & ~clk_6;
+        div <= div + 1'd1;
+        ce_pix <= !div;
 end
 
-arcade_fx #(320,9) arcade_video
+arcade_video #(320,320,9) arcade_video
 (
         .*,
 
-        .clk_video(clk_24),
+        .clk_video(clk_48),
 
         .RGB_in({r,g,b}),
         .HBlank(hblank),
         .VBlank(vblank),
         .HSync(hs),
         .VSync(vs),
-
+        .no_rotate(1),
+        .rotate_ccw(0),
         .fx(status[5:3])
 );
 
@@ -322,7 +324,7 @@ pll pll (
 	.refclk ( CLK_50M   ),
 	.rst(0),
 	.locked 		( locked    ),        // PLL is running stable
-	.outclk_0	( clk_24	),        // 24 MHz
+	.outclk_0	( clk_48	),        // 48 MHz
 	.outclk_1	( clk_12	)        // 12 MHz
 	 );
 
