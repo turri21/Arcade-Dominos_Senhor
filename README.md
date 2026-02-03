@@ -1,3 +1,9 @@
+-=(Dominos_Senhor notes)=-
+
+Tested: Working Video 720p, 1080p & Sound.
+
+___
+
 # Dominos
 FPGA implementation by james10952001 of [Dominos](https://github.com/james10952001/Dominos "Dominos") arcade game released by Atari in 1977
 
